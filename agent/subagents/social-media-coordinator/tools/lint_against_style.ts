@@ -1,0 +1,9 @@
+import { lintAgainstStyleTool } from "#lib/content/tools.js";
+
+export default lintAgainstStyleTool([
+  "x",
+  "linkedin",
+  "threads",
+  "bluesky",
+  "mastodon",
+]);
