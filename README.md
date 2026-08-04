@@ -5,7 +5,7 @@
 [![Agent Stack](https://img.shields.io/badge/Agent%20Stack-000?style=flat-square&logo=vercel&logoColor=FFF&labelColor=000&color=000)](https://vercel.com/kb/agent-stack)
 [![MIT License](https://img.shields.io/badge/License-MIT-000?style=flat-square&logo=opensourceinitiative&logoColor=white&labelColor=000&color=000)](LICENSE)
 
-Team of marketing agents built on [eve](https://eve.dev). You bring work to a team lead: a launch to plan,posts to write, or a page that isn't converting. The lead holds the shared picture of the product, routes the request to the specialist who does that kind of work, and hands back what they produced.
+A team of marketing agents built on [eve](https://eve.dev). You bring work to a team lead: a launch to plan, posts to write, or a page that isn't converting. The lead briefs the right specialist and hands back what they produced.
 
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?project-name=marketing-team-eve-template&repository-name=marketing-team-eve-template&repository-url=https%3A%2F%2Fgithub.com%2Fvercel-labs%2Fmarketing-team-eve-template%2Ftree%2Fmain&connect=%5B%7B%22type%22%3A%22notion%22%2C%22env%22%3A%22NOTION_CONNECTOR%22%7D%2C%7B%22type%22%3A%22resend%22%2C%22env%22%3A%22RESEND_CONNECTOR%22%7D%2C%7B%22type%22%3A%22slack%22%2C%22env%22%3A%22SLACK_CONNECTOR%22%2C%22triggers%22%3Atrue%2C%22triggerPath%22%3A%22%2Feve%2Fv1%2Fslack%22%7D%5D&stores=%5B%7B%22type%22%3A%22blob%22%2C%22access%22%3A%22public%22%7D%5D&env=TYPEFULLY_API_KEY&envDescription=API%20key%20for%20the%20Typefully%20MCP%20server%2C%20used%20to%20read%20and%20write%20social%20drafts)
 
@@ -17,30 +17,27 @@ Team of marketing agents built on [eve](https://eve.dev). You bring work to a te
 | `content-marketer` | Long-form: blog posts, landing pages, case studies, newsletters, docs | A Notion page link |
 | `social-media-coordinator` | Short-form for X, LinkedIn, Threads, Bluesky, and Mastodon, plus the Typefully queue | Drafts in Typefully |
 | `seo` | Page and site audits, hierarchy and internal linking, JSON-LD schema, templated page sets | Recommendations, long audits as artifacts |
-| `email` | Reworking existing copy to survive an inbox, then building, targeting, and sending in Resend | A Resend campaign link |
+| `email` | Reworking existing copy for the inbox, then building, targeting, and sending in Resend | A Resend campaign link |
 
-The dependency runs one way. The product marketer writes the brand context; everyone else reads it at the start of every task. That makes it the one piece of shared state whose quality bounds everything else, which is why a single specialist owns authoring it.
+The product marketer maintains the brand context document; every other specialist reads it at the start of a task. It is the team's only piece of shared state, so it has a single owner.
 
-The specialists do not overlap by accident. The product marketer decides what the team claims, the content marketer writes the words, `seo` decides which pages should exist, and `social-media-coordinator` and `email` are the two that can put something in front of an audience.
+Each specialist has a distinct job: the product marketer decides what the team claims, the content marketer writes long-form copy, `seo` decides which pages should exist, and `social-media-coordinator` and `email` publish to an audience.
 
-### One request routes twice
+### Newsletters route through two specialists
 
-A newsletter is the case where two specialists chain. The content marketer authors the prose; the email specialist reworks it for the inbox and runs Resend.
-
-Splitting it this way keeps the newsletter inside the planning and editing passes the content marketer already runs, instead of growing a second, thinner writer.
+The content marketer writes the newsletter's prose, then the email specialist adapts it for the inbox and sends it through Resend. The email specialist reworks existing copy; it doesn't draft from scratch, so newsletters still go through the content marketer's planning and editing passes.
 
 ## How it works
 
-- **One lead that delegates, not a generalist.** The root agent loads the brand context and this user's standing preferences, then briefs one specialist with everything it needs. It does not write the deliverable.
-- **Subagents inherit nothing.** Every specialist runs in a fresh child session: no conversation history, no parent skills, tools, or connections. That is why the lead's instructions are mostly about writing a complete brief, and why each specialist loads the brand context again through its own `get_brand_context`.
-- **The tree is one level deep, deliberately.** A specialist that finds its own evidence knows when it has enough, and one that edits its own draft against a written rubric catches most of what a second reader would. Each hop costs a full context handoff, so the lead delegates and specialists do not.
-- **Research and editing are part of the craft.** Each specialist uses `web_search` and `web_fetch` against a source budget, then edits in deliberate passes before handing work back.
-- **Skills load on demand.** Each skill is a `SKILL.md` plus reference files, pulled in only when its frontmatter `description` matches the situation.
-- **No registry file.** A tool's name is its filename, a subagent's name is its directory name. eve walks `agent/` at build time. Adding a specialist means adding a directory.
+- The lead delegates. It loads the brand context and your saved preferences, writes a brief for one specialist, and returns the result. It doesn't write deliverables itself.
+- Specialists run in fresh sessions. A subagent starts with no conversation history and none of the parent's skills, tools, or connections, so the lead's brief has to carry everything, and each specialist loads the brand context through its own `get_brand_context` tool.
+- There is one level of delegation. Specialists do their own research (`web_search` and `web_fetch` against a source budget) and edit their own drafts against a written rubric instead of spawning further subagents, since each hop costs a full context handoff.
+- Skills load on demand. Each is a `SKILL.md` plus reference files, loaded when its frontmatter `description` matches the task.
+- There is no registry file. A tool's name is its filename and a subagent's name is its directory name; eve discovers everything by walking `agent/` at build time. Adding a specialist means adding a directory.
 
-### Publishing pauses for a human
+### Approval gates
 
-Every irreversible action stops for an approve or deny decision, rendered as a button in Slack or the TUI.
+Irreversible actions pause for an approve or deny decision, rendered as a button in Slack or the TUI.
 
 | Action | Pauses |
 | --- | --- |
@@ -52,13 +49,13 @@ Every irreversible action stops for an approve or deny decision, rendered as a b
 | Move pages or change views in Notion | Always |
 | Create or update a Notion page | No, drafting is the normal flow |
 | `delete_asset`, `clear_user_preferences` | Always |
-| `save_brand_context` | No, by design. The tool description tells the model to agree the document with you first |
+| `save_brand_context` | No. The tool's description tells the model to agree the document with you before saving |
 
-The Resend connection goes one step further than gating. It narrows what the model can discover at all with `tools.allow`, cutting roughly 85 published tools to the 47 that make up the campaign, list, and diagnostic surface. Account administration such as API key creation and domain writes is never on the table.
+The Resend connection also limits what the model can discover at all. `tools.allow` cuts Resend's roughly 85 published tools down to the 47 covering campaigns, lists, and diagnostics. Account administration such as API key creation and domain writes is excluded entirely.
 
-### Slack opens with suggested prompts
+### Suggested prompts in Slack
 
-Opening a fresh conversation with the team pins four starting prompts. Slack renders at most four, so it is one per specialist rather than a tour of the whole team.
+A fresh Slack conversation with the team pins four suggested prompts, one per specialist (Slack renders at most four).
 
 | Prompt | Routes to |
 | --- | --- |
@@ -67,15 +64,15 @@ Opening a fresh conversation with the team pins four starting prompts. Slack ren
 | Draft social posts | `social-media-coordinator` |
 | Review a page's SEO | `seo` |
 
-Each one names the deliverable, asks for the brand context and your preferences, then hands the interview back, so an unspecified request costs one question rather than a wasted delegation.
+Each prompt names a deliverable and asks the lead to check the brand context and your preferences before delegating.
 
-This requires `assistant:write` under Bot Scopes and the `assistant_thread_started` and `app_home_opened` trigger event types. Without them the prompts never appear, and the rest of the channel is unaffected.
+Suggested prompts require the `assistant:write` bot scope and the `assistant_thread_started` and `app_home_opened` trigger event types. Without them the prompts don't appear; everything else still works.
 
 ## Deploy
 
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?project-name=marketing-team-eve-template&repository-name=marketing-team-eve-template&repository-url=https%3A%2F%2Fgithub.com%2Fvercel-labs%2Fmarketing-team-eve-template%2Ftree%2Fmain&connect=%5B%7B%22type%22%3A%22notion%22%2C%22env%22%3A%22NOTION_CONNECTOR%22%7D%2C%7B%22type%22%3A%22resend%22%2C%22env%22%3A%22RESEND_CONNECTOR%22%7D%2C%7B%22type%22%3A%22slack%22%2C%22env%22%3A%22SLACK_CONNECTOR%22%2C%22triggers%22%3Atrue%2C%22triggerPath%22%3A%22%2Feve%2Fv1%2Fslack%22%7D%5D&stores=%5B%7B%22type%22%3A%22blob%22%2C%22access%22%3A%22public%22%7D%5D&env=TYPEFULLY_API_KEY&envDescription=API%20key%20for%20the%20Typefully%20MCP%20server%2C%20used%20to%20read%20and%20write%20social%20drafts)
 
-The deploy button helps you provision and wire up everything:
+The deploy button provisions and wires up:
 
 | Provisioned | Sets |
 | --- | --- |
@@ -89,7 +86,7 @@ Then talk to the lead in the dev TUI or your own front end, and it routes work t
 
 ### One manual step
 
-**Resend sending.** Verify a sending domain and create at least one segment in the [Resend dashboard](https://resend.com/domains). The agent reads that state and picks from it, but cannot create a domain or verify DNS for you. The Resend connector is user-scoped, so each person authorizes their own login the first time they ask for email work, and sends are attributed to whoever approved them. Skip if you are not using email.
+**Resend sending.** Verify a sending domain and create at least one segment in the [Resend dashboard](https://resend.com/domains). The agent reads that state and picks from it, but cannot create a domain or verify DNS for you. The Resend connector is user-scoped: each person authorizes their own login the first time they ask for email work, and sends are attributed to whoever approved them. Skip this if you are not using email.
 
 ### Quick start with an AI coding agent
 
@@ -114,7 +111,7 @@ I want to build a team of marketing agents with the eve framework, using the mar
 | Skill reference files and `bash` | [Vercel Sandbox](https://vercel.com/docs/sandbox) |
 | Lint and format | [Ultracite](https://www.ultracite.ai/), a [Biome](https://biomejs.dev/) preset |
 
-### Credentials: one static key
+### Credentials
 
 | Service | Authenticates as | You manage |
 | --- | --- | --- |
@@ -127,7 +124,7 @@ I want to build a team of marketing agents with the eve framework, using the mar
 
 Typefully's MCP server only accepts a static key, so it is the single credential in the project and its connection is shared across all users.
 
-Resend is the one place per-user scoping earns its keep. Sending is the only thing this team does that cannot be undone, so a per-user token means the approval names who agreed to it and Resend records who sent it, instead of every campaign arriving from one shared workspace key.
+Resend uses per-user tokens because sending email is the one action here that can't be undone: the approval records who agreed to a send, and Resend records who made it.
 
 ## Project layout
 
@@ -161,7 +158,7 @@ Every specialist directory holds the same shape: an `agent.ts` with the routing 
 | `seo` | `seo-audit`, `site-architecture`, `schema`, `programmatic-seo` | Notion |
 | `email` | `email-style`, `email-adaptation`, `deliverability`, `resend-build`, `writing-quality` | Resend, Notion |
 
-Two specialists carry an evidence boundary worth knowing about. `seo` has no crawler, rank tracker, or Search Console, and its audit checklist marks every check as verifiable by fetch or not verifiable at all. `email` cannot see inbox placement or domain reputation, and its deliverability checklist does the same. Both are built to say what they could not check rather than infer it.
+Two specialists work with limited evidence. `seo` has no crawler, rank tracker, or Search Console, so its audit checklist marks each check as verifiable by fetch or not verifiable at all. `email` cannot see inbox placement or domain reputation, and its deliverability checklist does the same. Both are instructed to report what they could not check instead of inferring it.
 
 ## Local development
 
@@ -182,7 +179,7 @@ pnpm dev          # then run /model once in the TUI to link a provider
 | `npx eve info` | Print every discovered tool, skill, connection, and subagent |
 | `eve deploy` | Ship to production |
 
-There is no unit test suite. Verify with `pnpm validate`, which must report 0 errors and 0 warnings, then exercise the agent in the TUI. Approval gates render there too, so it is the place to confirm a send actually stops before it goes out.
+There is no unit test suite. Verify with `pnpm validate`, which must report 0 errors and 0 warnings, then exercise the agent in the TUI. Approval gates render in the TUI, so you can confirm a send pauses before it goes out.
 
 `npx eve info` is the fastest way to confirm a change landed. If a file you added does not appear, discovery did not classify it as an authored slot, and `.eve/discovery/diagnostics.json` says why.
 
@@ -228,7 +225,7 @@ The agent auto-updates as you edit these files.
 | Voice and banned words | `references/banned-words.json` in each `<surface>-style` skill | Add a surface by adding the skill folder and passing its name in that agent's `tools/lint_against_style.ts` |
 | Approval gates | `APPROVAL_REQUIRED_TOOLS` in `connections/notion.ts`, `DELETE_TOOLS` / `PUBLISH_TOOLS` in `typefully.ts`, `SEND_TOOLS` / `DESTRUCTIVE_TOOLS` in `resend.ts` | The Notion copies are identical, so change them together |
 | What the email agent can reach | `ALLOWED_TOOLS` in `connections/resend.ts` | An allow list of 47 tools out of roughly 85. Prefer adding a name here over loosening a gate |
-| Models | `agent/agent.ts` and each `agent/subagents/<id>/agent.ts` | Or run `/model` in the TUI. Every agent runs the same model; the lead routes rather than writes, so it is the first place to try a cheaper tier |
+| Models | `agent/agent.ts` and each `agent/subagents/<id>/agent.ts` | Or run `/model` in the TUI. Every agent uses the same model by default; the lead only routes, so it is the first place to try a cheaper tier |
 | Shared code | `agent/lib/<domain>/` | eve scopes skills to one agent, so a shared procedure is either copied markdown or a `defineSkill` factory called from a one-line file per agent |
 
 ### Adding a remote specialist
@@ -249,7 +246,7 @@ export default defineRemoteAgent({
 });
 ```
 
-Set `PAID_ADS_AGENT_URL`, and the lead picks the specialist up from its `description` exactly as it does the local ones. The result comes back as a normal tool result. This suits work needing credentials or a release cycle you would rather keep out of this repo, such as ad platform access.
+Set `PAID_ADS_AGENT_URL`, and the lead picks the specialist up from its `description` exactly as it does the local ones. The result comes back as a normal tool result. Useful when a specialist needs credentials or a release cycle you'd rather keep out of this repo, such as ad platform access.
 
 ## Learn more
 
